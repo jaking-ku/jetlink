@@ -1,0 +1,44 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: |
+          make -C ios project
+
+      - name: Build App (Unsigned)
+        run: |
+          xcodebuild build \
+            -project ios/Jetlink.xcodeproj \
+            -scheme Jetlink \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -derivedDataPath ios/build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package to IPA
+        run: |
+          mkdir -p Payload
+          cp -r ios/build/DerivedData/Build/Products/Release-iphoneos/Jetlink.app Payload/
+          zip -r Jetlink.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jetlink_ipa
+          path: Jetlink.ipa
+          retention-days: 7
