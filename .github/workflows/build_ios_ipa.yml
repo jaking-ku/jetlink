@@ -1,76 +1,24 @@
-name: Build iOS IPA
+Run xcodebuild build \
+Command line invocation:
+    /Applications/Xcode_16.1.app/Contents/Developer/usr/bin/xcodebuild build -project ios/Jetlink.xcodeproj -scheme Jetlink -destination generic/platform=iOS -configuration Release -derivedDataPath ios/build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
 
-on:
-  workflow_dispatch:
+User defaults from command line:
+    IDEDerivedDataPathOverride = /Users/runner/work/jetlink/jetlink/ios/build/DerivedData
+    IDEPackageSupportUseBuiltinSCM = YES
 
-jobs:
-  build:
-    runs-on: macos-14
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+Build settings from command line:
+    CODE_SIGN_IDENTITY = 
+    CODE_SIGNING_ALLOWED = NO
+    CODE_SIGNING_REQUIRED = NO
 
-      - name: Select Xcode 16.1
-        run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+Resolve Package Graph
+package 'jetlinkkit' is using Swift tools version 6.2.0 but the installed version is 6.0.0
+2026-09-28 10:25:43.029 xcodebuild[1994:8844] Writing error result bundle to /var/folders/s6/5hzmn6lx4dz5nxs7k_0slzph0000gn/T/ResultBundle_2026-28-09_10-25-0043.xcresult
 
-      - name: Patch project settings
-        run: |
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 26.1;/IPHONEOS_DEPLOYMENT_TARGET = 18.0;/g' ios/Jetlink.xcodeproj/project.pbxproj
-          sed -i '' 's/XCODE_VERSION = 26.6;/XCODE_VERSION = 16.1;/g' ios/Jetlink.xcodeproj/project.pbxproj
-          sed -i '' 's/static func downloadingText/nonisolated static func downloadingText/g' JetlinkKit/Sources/JetlinkUI/ModelStatusLabel.swift
-          python3 - << 'EOF'
-          import glob
+Resolved source packages:
+  JetlinkKit: (null)
 
-          for path in glob.glob('ios/Jetlink/**/*.swift', recursive=True):
-              with open(path, 'r', encoding='utf-8') as f:
-                  c = f.read()
-              c = c.replace('.buttonStyle(.glassProminent)', '.buttonStyle(.borderedProminent)')
-              c = c.replace('.buttonStyle(.glass)', '.buttonStyle(.bordered)')
-              with open(path, 'w', encoding='utf-8') as f:
-                  f.write(c)
+xcodebuild: error: Could not resolve package dependencies:
+  package 'jetlinkkit' is using Swift tools version 6.2.0 but the installed version is 6.0.0
 
-          p_status = 'ios/Jetlink/Views/Status/StatusScreen.swift'
-          with open(p_status, 'r', encoding='utf-8') as f:
-              c = f.read()
-          c = c.replace('.navigationSubtitle(state.subtitle)', '// .navigationSubtitle(state.subtitle)')
-          with open(p_status, 'w', encoding='utf-8') as f:
-              f.write(c)
-
-          p_root = 'ios/Jetlink/Views/RootView.swift'
-          with open(p_root, 'r', encoding='utf-8') as f:
-              c = f.read()
-          start_idx = c.find('.tabBarMinimizeBehavior')
-          end_idx = c.find('.onChange(of: app.server.shutdownRequests)')
-          if start_idx != -1 and end_idx != -1:
-              c = c[:start_idx] + c[end_idx:]
-          c = c.replace('@Environment(\\.tabViewBottomAccessoryPlacement) private var placement', 'private var placement = 0')
-          c = c.replace('placement == .inline ? 12 : 16', '16')
-          with open(p_root, 'w', encoding='utf-8') as f:
-              f.write(c)
-
-          print("All Swift compatibility patches applied successfully.")
-          EOF
-
-      - name: Build App (Unsigned)
-        run: |
-          xcodebuild build \
-            -project ios/Jetlink.xcodeproj \
-            -scheme Jetlink \
-            -destination 'generic/platform=iOS' \
-            -configuration Release \
-            -derivedDataPath ios/build/DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
-
-      - name: Package IPA
-        run: |
-          mkdir -p Payload
-          cp -r ios/build/DerivedData/Build/Products/Release-iphoneos/Jetlink.app Payload/
-          zip -r Jetlink.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Jetlink_App
-          path: Jetlink.ipa
+Error: Process completed with exit code 74.
