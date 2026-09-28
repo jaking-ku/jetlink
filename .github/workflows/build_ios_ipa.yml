@@ -22,12 +22,14 @@ jobs:
           fi
           xcodebuild -version
 
-      - name: Fix version target for iOS
+      - name: Fix version target and concurrency for iOS
         run: |
           sed -i '' 's/iOS: "26.1"/iOS: "18.0"/g' ios/project.yml
           sed -i '' 's/xcodeVersion: "26.6"/xcodeVersion: "16.1"/g' ios/project.yml
+          sed -i '' 's/SWIFT_STRICT_CONCURRENCY: complete/SWIFT_STRICT_CONCURRENCY: minimal/g' ios/project.yml
           sed -i '' 's/\.iOS(\.v26)/\.iOS(\.v18)/g' JetlinkKit/Package.swift
           sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' JetlinkKit/Package.swift
+          sed -i '' 's/public static func downloadingText/nonisolated public static func downloadingText/g' JetlinkKit/Sources/JetlinkUI/ModelStatusLabel.swift
 
       - name: Install build tools
         run: |
